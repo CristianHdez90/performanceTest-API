@@ -147,7 +147,7 @@ jobs:
           REPORT_HTML="${{ env.REPORT_DIR }}/index.html"
           REPORT_JSON="${{ env.REPORT_DIR }}/report.json"
 
-          cat > "$REPORT_HTML" << 'EOF'
+          cat > "$REPORT_HTML" << EOF
                 <!DOCTYPE html>
                 <html lang="en">
                 <head>
