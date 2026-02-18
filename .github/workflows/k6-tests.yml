@@ -555,19 +555,237 @@
 # -----------...------------------------------------------------Version 3 - PRO Dashboard with Metrics Cards and Charts----------------------------------------------------------
 
 
+# name: K6 Performance Tests
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# permissions:
+#   contents: write
+
+# env:
+#   BASE_URL_API: https://reqres.in/api
+#   API_KEY: reqres_ce4bae3ca38545618d0e2bf0834e717c
+#   REPORT_DIR: ./target/site/reportsK6
+#   P95_THRESHOLD: 500
+#   ENVIRONMENT: staging
+
+# jobs:
+
+#   run_k6:
+#     name: "🧪 Run K6 tests"
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: 📥 Checkout repo
+#         uses: actions/checkout@v3
+
+#       - name: 📦 Install K6 + jq + bc
+#         run: |
+#           sudo apt update
+#           sudo apt install -y gnupg software-properties-common curl jq bc
+#           curl -s https://dl.k6.io/key.gpg | sudo apt-key add -
+#           echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+#           sudo apt update
+#           sudo apt install -y k6
+
+#       - name: 📝 Run K6 tests
+#         run: |
+#           mkdir -p ${{ env.REPORT_DIR }}
+#           k6 run ./tests/users-test.js --out json=${{ env.REPORT_DIR }}/report.json
+
+#       - name: 📤 Upload K6 report artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: k6-report
+#           path: ${{ env.REPORT_DIR }}
+
+#   generate_report:
+#     name: "📊 Generate Observability Dashboard"
+#     runs-on: ubuntu-latest
+#     needs: run_k6
+
+#     steps:
+#       - name: 📥 Download K6 report artifact
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: k6-report
+#           path: ${{ env.REPORT_DIR }}
+
+#       - name: 📊 Append metrics history + detect regression
+#         run: |
+#           REPORT_JSON="${{ env.REPORT_DIR }}/report.json"
+#           HISTORY_FILE="${{ env.REPORT_DIR }}/history.json"
+
+#           durations=$(jq -r 'select(.metric=="http_req_duration" and .type=="Point") | .data.value' "$REPORT_JSON")
+#           p95=$(echo "$durations" | sort -n | awk '{a[NR]=$1} END{print a[int(NR*0.95)]}')
+
+#           timestamp=$(date +%s)
+#           branch="${GITHUB_REF##*/}"
+#           environment="${{ env.ENVIRONMENT }}"
+
+#           if [ -f "$HISTORY_FILE" ]; then
+#             jq ". + [{\"timestamp\":$timestamp,\"p95\":$p95,\"branch\":\"$branch\",\"env\":\"$environment\"}]" \
+#               "$HISTORY_FILE" > tmp.json && mv tmp.json "$HISTORY_FILE"
+#           else
+#             echo "[{\"timestamp\":$timestamp,\"p95\":$p95,\"branch\":\"$branch\",\"env\":\"$environment\"}]" > "$HISTORY_FILE"
+#           fi
+
+#           previous=$(jq '.[-2].p95' "$HISTORY_FILE" 2>/dev/null || echo 0)
+
+#           if [ "$previous" != "null" ] && [ "$previous" != "0" ]; then
+#             increase=$(awk "BEGIN {print (($p95 - $previous)/$previous)*100}")
+#             if (( $(echo "$increase > 20" | bc -l) )); then
+#               echo "❌ Performance regression >20%"
+#               exit 1
+#             fi
+#           fi
+
+#       - name: 🧮 Generate PRO HTML Dashboard
+#         run: |
+        
+#           REPORT_JSON="${{ env.REPORT_DIR }}/report.json"
+#           REPORT_HTML="${{ env.REPORT_DIR }}/index.html"
+
+#           cat > "$REPORT_HTML" <<EOF
+#           <!DOCTYPE html>
+#           <html>
+#           <head>
+#           <meta charset="UTF-8">
+#           <title>K6 Performance Observability</title>
+#           <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+#           <style>
+#           body{font-family:Arial;background:#f4f6f8;padding:20px;}
+#           .cards{display:flex;flex-wrap:wrap;gap:15px;margin-bottom:20px;}
+#           .card{background:white;padding:15px;border-radius:8px;flex:1;min-width:180px;box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+#           .pass{color:green;font-weight:bold;}
+#           .fail{color:red;font-weight:bold;}
+#           canvas{background:white;padding:10px;border-radius:8px;margin-top:20px;}
+#           </style>
+#           </head>
+#           <body>
+
+#           <h1>K6 Performance Observability Dashboard</h1>
+
+#           <div class="cards">
+#           <div class="card"><h3>Total</h3><p id="total"></p></div>
+#           <div class="card"><h3>Avg</h3><p id="avg"></p></div>
+#           <div class="card"><h3>P95</h3><p id="p95"></p></div>
+#           <div class="card"><h3>Status</h3><p id="status"></p></div>
+#           </div>
+
+#           <canvas id="histogram"></canvas>
+#           <canvas id="trend"></canvas>
+
+#           <script>
+
+#           const THRESHOLD=${{ env.P95_THRESHOLD }};
+#           const rawData=\`$(cat "$REPORT_JSON")\`;
+
+#           let durations=[];
+#           rawData.split('\\n').forEach(l=>{
+#           try{
+#             const o=JSON.parse(l);
+#             if(o.metric==="http_req_duration" && o.type==="Point")
+#               durations.push(o.data.value);
+#           }catch(e){}
+#           });
+
+#           durations.sort((a,b)=>a-b);
+#           let total=durations.length;
+#           let avg=(durations.reduce((a,b)=>a+b,0)/total).toFixed(2);
+#           let p95=durations[Math.floor(total*0.95)].toFixed(2);
+
+#           document.getElementById("total").textContent=total;
+#           document.getElementById("avg").textContent=avg+" ms";
+#           document.getElementById("p95").textContent=p95+" ms";
+
+#           let statusEl=document.getElementById("status");
+#           if(p95>THRESHOLD){
+#             statusEl.textContent="FAIL";
+#             statusEl.className="fail";
+#           }else{
+#             statusEl.textContent="PASS";
+#             statusEl.className="pass";
+#           }
+
+#           function histogram(data,bucket=50){
+#           let max=Math.max(...data);
+#           let buckets=Math.ceil(max/bucket);
+#           let arr=new Array(buckets).fill(0);
+#           data.forEach(v=>arr[Math.floor(v/bucket)]++);
+#           return {labels:arr.map((_,i)=>i*bucket+"-"+(i+1)*bucket+"ms"),values:arr};
+#           }
+
+#           let hist=histogram(durations);
+
+#           new Chart(document.getElementById("histogram"),{
+#           type:"bar",
+#           data:{labels:hist.labels,datasets:[{label:"Distribution",data:hist.values}]}
+#           });
+
+#           fetch("history.json")
+#           .then(r=>r.json())
+#           .then(history=>{
+#             new Chart(document.getElementById("trend"),{
+#               type:"line",
+#               data:{
+#                 labels:history.map(h=>new Date(h.timestamp*1000).toLocaleString()),
+#                 datasets:[{
+#                   label:"P95 Trend",
+#                   data:history.map(h=>h.p95),
+#                   fill:false
+#                 }]
+#               }
+#             });
+#           }).catch(()=>{});
+
+#           </script>
+#           </body>
+#           </html>
+#           EOF
+
+#       - name: 📤 Upload HTML report artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: k6-html-report
+#           path: ${{ env.REPORT_DIR }}
+
+#   deploy_report:
+#     name: "🚀 Deploy K6 Report to GitHub Pages"
+#     runs-on: ubuntu-latest
+#     needs: generate_report
+#     steps:
+#       - name: 📥 Download HTML report artifact
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: k6-html-report
+#           path: ${{ env.REPORT_DIR }}
+
+#       - name: 🌐 Deploy to GitHub Pages
+#         uses: peaceiris/actions-gh-pages@v3
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           publish_dir: ${{ env.REPORT_DIR }}
+
+
+
 name: K6 Performance Tests
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 env:
   BASE_URL_API: https://reqres.in/api
-  API_KEY: reqres_ce4bae3ca38545618d0e2bf0834e717c
+  API_KEY: ${{ secrets.API_KEY }}
   REPORT_DIR: ./target/site/reportsK6
   P95_THRESHOLD: 500
   ENVIRONMENT: staging
@@ -580,21 +798,21 @@ jobs:
 
     steps:
       - name: 📥 Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 📦 Install K6 + jq + bc
         run: |
           sudo apt update
           sudo apt install -y gnupg software-properties-common curl jq bc
-          curl -s https://dl.k6.io/key.gpg | sudo apt-key add -
-          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          curl -s https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
           sudo apt update
           sudo apt install -y k6
 
       - name: 📝 Run K6 tests
         run: |
-          mkdir -p ${{ env.REPORT_DIR }}
-          k6 run ./tests/users-test.js --out json=${{ env.REPORT_DIR }}/report.json
+          mkdir -p $REPORT_DIR
+          k6 run ./tests/users-test.js --out json=$REPORT_DIR/report.json
 
       - name: 📤 Upload K6 report artifact
         uses: actions/upload-artifact@v4
@@ -614,10 +832,23 @@ jobs:
           name: k6-report
           path: ${{ env.REPORT_DIR }}
 
+      # 🔥 Restaurar histórico real desde gh-pages
+      - name: 📥 Restore history from gh-pages
+        run: |
+          git clone --depth=1 --branch gh-pages https://github.com/${{ github.repository }} gh-pages || echo "No gh-pages yet"
+          
+          if [ -f gh-pages/history.json ]; then
+            cp gh-pages/history.json $REPORT_DIR/history.json
+            echo "✅ Previous history restored"
+          else
+            echo "[]" > $REPORT_DIR/history.json
+            echo "ℹ️ No previous history found"
+          fi
+
       - name: 📊 Append metrics history + detect regression
         run: |
-          REPORT_JSON="${{ env.REPORT_DIR }}/report.json"
-          HISTORY_FILE="${{ env.REPORT_DIR }}/history.json"
+          REPORT_JSON="$REPORT_DIR/report.json"
+          HISTORY_FILE="$REPORT_DIR/history.json"
 
           durations=$(jq -r 'select(.metric=="http_req_duration" and .type=="Point") | .data.value' "$REPORT_JSON")
           p95=$(echo "$durations" | sort -n | awk '{a[NR]=$1} END{print a[int(NR*0.95)]}')
@@ -626,28 +857,32 @@ jobs:
           branch="${GITHUB_REF##*/}"
           environment="${{ env.ENVIRONMENT }}"
 
-          if [ -f "$HISTORY_FILE" ]; then
-            jq ". + [{\"timestamp\":$timestamp,\"p95\":$p95,\"branch\":\"$branch\",\"env\":\"$environment\"}]" \
-              "$HISTORY_FILE" > tmp.json && mv tmp.json "$HISTORY_FILE"
-          else
-            echo "[{\"timestamp\":$timestamp,\"p95\":$p95,\"branch\":\"$branch\",\"env\":\"$environment\"}]" > "$HISTORY_FILE"
-          fi
+          jq ". + [{\"timestamp\":$timestamp,\"p95\":$p95,\"branch\":\"$branch\",\"env\":\"$environment\"}]" \
+            "$HISTORY_FILE" > tmp.json && mv tmp.json "$HISTORY_FILE"
 
           previous=$(jq '.[-2].p95' "$HISTORY_FILE" 2>/dev/null || echo 0)
 
           if [ "$previous" != "null" ] && [ "$previous" != "0" ]; then
             increase=$(awk "BEGIN {print (($p95 - $previous)/$previous)*100}")
+            echo "Previous p95: $previous"
+            echo "Current p95: $p95"
+            echo "Increase: $increase %"
+
             if (( $(echo "$increase > 20" | bc -l) )); then
               echo "❌ Performance regression >20%"
               exit 1
             fi
           fi
 
+          if (( $(echo "$p95 > $P95_THRESHOLD" | bc -l) )); then
+            echo "❌ Global SLA exceeded"
+            exit 1
+          fi
+
       - name: 🧮 Generate PRO HTML Dashboard
         run: |
-        
-          REPORT_JSON="${{ env.REPORT_DIR }}/report.json"
-          REPORT_HTML="${{ env.REPORT_DIR }}/index.html"
+          REPORT_JSON="$REPORT_DIR/report.json"
+          REPORT_HTML="$REPORT_DIR/index.html"
 
           cat > "$REPORT_HTML" <<EOF
           <!DOCTYPE html>
@@ -687,9 +922,9 @@ jobs:
           let durations=[];
           rawData.split('\\n').forEach(l=>{
           try{
-            const o=JSON.parse(l);
-            if(o.metric==="http_req_duration" && o.type==="Point")
-              durations.push(o.data.value);
+          const o=JSON.parse(l);
+          if(o.metric==="http_req_duration" && o.type==="Point")
+          durations.push(o.data.value);
           }catch(e){}
           });
 
@@ -704,11 +939,11 @@ jobs:
 
           let statusEl=document.getElementById("status");
           if(p95>THRESHOLD){
-            statusEl.textContent="FAIL";
-            statusEl.className="fail";
+          statusEl.textContent="FAIL";
+          statusEl.className="fail";
           }else{
-            statusEl.textContent="PASS";
-            statusEl.className="pass";
+          statusEl.textContent="PASS";
+          statusEl.className="pass";
           }
 
           function histogram(data,bucket=50){
@@ -729,17 +964,17 @@ jobs:
           fetch("history.json")
           .then(r=>r.json())
           .then(history=>{
-            new Chart(document.getElementById("trend"),{
-              type:"line",
-              data:{
-                labels:history.map(h=>new Date(h.timestamp*1000).toLocaleString()),
-                datasets:[{
-                  label:"P95 Trend",
-                  data:history.map(h=>h.p95),
-                  fill:false
-                }]
-              }
-            });
+          new Chart(document.getElementById("trend"),{
+          type:"line",
+          data:{
+          labels:history.map(h=>new Date(h.timestamp*1000).toLocaleString()),
+          datasets:[{
+          label:"P95 Trend",
+          data:history.map(h=>h.p95),
+          fill:false
+          }]
+          }
+          });
           }).catch(()=>{});
 
           </script>
@@ -757,6 +992,7 @@ jobs:
     name: "🚀 Deploy K6 Report to GitHub Pages"
     runs-on: ubuntu-latest
     needs: generate_report
+
     steps:
       - name: 📥 Download HTML report artifact
         uses: actions/download-artifact@v4
@@ -769,4 +1005,3 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ${{ env.REPORT_DIR }}
-  
