@@ -7,6 +7,7 @@ export const options = {
 };
 
 const BASE_URL = __ENV.BASE_URL_API;
+const POKE_URL = 'https://pokeapi.co/api/v2/pokemon?limit=200';
 const API_KEY = __ENV.API_KEY;
 
 export default function () {
