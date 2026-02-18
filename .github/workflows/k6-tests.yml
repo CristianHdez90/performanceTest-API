@@ -99,7 +99,7 @@ permissions:
 
 env:
   BASE_URL_API: https://reqres.in/api
-  API_KEY: reqres_ce4bae3ca38545618d0e2bf0834e717c
+  API_KEY: reqres_b2dd07e748d04c50b14a1ebb4e36f35f
   REPORT_DIR: ./target/site/reportsK6
 
 jobs:
