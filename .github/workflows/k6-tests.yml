@@ -555,7 +555,7 @@
 # -----------...------------------------------------------------Version 3 - PRO Dashboard with Metrics Cards and Charts----------------------------------------------------------
 
 
-name: K6 Performance Tests & Deploy
+name: K6 Performance Tests
 
 on:
   push:
@@ -692,7 +692,7 @@ jobs:
               durations.push(o.data.value);
           }catch(e){}
           });
-          
+
           durations.sort((a,b)=>a-b);
           let total=durations.length;
           let avg=(durations.reduce((a,b)=>a+b,0)/total).toFixed(2);
