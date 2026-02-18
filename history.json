@@ -1,1 +1,14 @@
-[{"timestamp":1771455398,"p95":149.845307,"branch":"main","env":"staging"}]
+[
+  {
+    "timestamp": 1771455398,
+    "p95": 149.845307,
+    "branch": "main",
+    "env": "staging"
+  },
+  {
+    "timestamp": 1771456294,
+    "p95": 88.950165,
+    "branch": "main",
+    "env": "staging"
+  }
+]
