@@ -70,6 +70,7 @@ jobs:
 
       - name: 🧮 Generate HTML report from K6 JSON
         run: |
+            mkdir -p ${{ env.REPORT_DIR }}
             echo "<!DOCTYPE html><html><head><title>K6 Report</title></head><body>" > ${{ env.REPORT_DIR }}/index.html
             echo "<h1>K6 Performance Report</h1>" >> ${{ env.REPORT_DIR }}/index.html
             echo "<pre>" >> ${{ env.REPORT_DIR }}/index.html
