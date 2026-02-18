@@ -10,5 +10,11 @@
     "p95": 88.950165,
     "branch": "main",
     "env": "staging"
+  },
+  {
+    "timestamp": 1771457089,
+    "p95": 136.169025,
+    "branch": "main",
+    "env": "staging"
   }
 ]
