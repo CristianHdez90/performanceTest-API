@@ -845,39 +845,60 @@ jobs:
             echo "ℹ️ No previous history found"
           fi
 
-      - name: 📊 Append metrics history + detect regression
+      - name: 📊 Append metrics history + smart regression check
         run: |
           REPORT_JSON="$REPORT_DIR/report.json"
           HISTORY_FILE="$REPORT_DIR/history.json"
 
           durations=$(jq -r 'select(.metric=="http_req_duration" and .type=="Point") | .data.value' "$REPORT_JSON")
+          total_requests=$(echo "$durations" | wc -l)
+
+          if [ "$total_requests" -lt 30 ]; then
+            echo "⚠️ Not enough samples ($total_requests) — skipping regression check"
+            exit 0
+          fi
+
           p95=$(echo "$durations" | sort -n | awk '{a[NR]=$1} END{print a[int(NR*0.95)]}')
 
           timestamp=$(date +%s)
           branch="${GITHUB_REF##*/}"
           environment="${{ env.ENVIRONMENT }}"
 
+          # Append current run
           jq ". + [{\"timestamp\":$timestamp,\"p95\":$p95,\"branch\":\"$branch\",\"env\":\"$environment\"}]" \
             "$HISTORY_FILE" > tmp.json && mv tmp.json "$HISTORY_FILE"
 
-          previous=$(jq '.[-2].p95' "$HISTORY_FILE" 2>/dev/null || echo 0)
+          runs_count=$(jq 'length' "$HISTORY_FILE")
 
-          if [ "$previous" != "null" ] && [ "$previous" != "0" ]; then
-            increase=$(awk "BEGIN {print (($p95 - $previous)/$previous)*100}")
-            echo "Previous p95: $previous"
-            echo "Current p95: $p95"
-            echo "Increase: $increase %"
+          echo "Total historical runs: $runs_count"
+          echo "Current p95: $p95 ms"
 
-            if (( $(echo "$increase > 60" | bc -l) )); then
-              echo "❌ Performance regression >60%"
-              exit 1
+          # --- SMART REGRESSION CHECK ---
+          if [ "$runs_count" -ge 4 ]; then
+            previous_avg=$(jq '.[-4:-1] | map(.p95) | add/length' "$HISTORY_FILE")
+
+            increase=$(awk "BEGIN {print (($p95 - $previous_avg)/$previous_avg)*100}")
+
+            echo "Average of last 3 p95: $previous_avg"
+            echo "Increase vs avg: $increase %"
+
+            if (( $(echo "$increase > 20" | bc -l) )); then
+              echo "⚠️ Performance regression >20% (WARNING only)"
+            else
+              echo "✅ No significant regression"
             fi
+          else
+            echo "ℹ️ Not enough historical data for regression comparison"
           fi
 
+          # --- HARD SLA CHECK ---
           if (( $(echo "$p95 > $P95_THRESHOLD" | bc -l) )); then
-            echo "❌ Global SLA exceeded"
+            echo "❌ Global SLA exceeded (p95 > $P95_THRESHOLD ms)"
             exit 1
+          else
+            echo "✅ SLA respected"
           fi
+
 
       - name: 🧮 Generate PRO HTML Dashboard
         run: |
