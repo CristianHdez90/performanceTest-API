@@ -1,33 +1,3 @@
-// import http from 'k6/http';
-// import { check } from 'k6';
-
-// export const options = {
-//     usuariosVirtuales: 5,
-//     duration: '10s',
-//     thresholds: {
-//         http_req_duration: ['p(95)<800'],
-//         http_req_failed: ['rate<0.01'],
-//     },
-// };
-
-// const BASE_URL = __ENV.BASE_URL_API;
-// const API_KEY = __ENV.API_KEY;
-
-// export default function () {
-
-//     const params = {
-//         headers: {
-//             'x-api-key': API_KEY,
-//         },
-//     };
-
-//     const res = http.get(`${BASE_URL}/users?page=1`, params);
-
-//     check(res, {
-//         'status 200': (r) => r.status === 200,
-//     });
-// }
-
 import http from 'k6/http';
 import { check } from 'k6';
 
@@ -92,6 +62,16 @@ export default function () {
     check(deleteRes, {
         'DELETE status 204': (r) => r.status === 204,
     });
+
+     // =========================
+    // GET /pokemon?limit=200 (PokéAPI)
+    // =========================
+    const pokeRes = http.get(POKE_URL);
+    check(pokeRes, {
+        'PokéAPI status 200': (r) => r.status === 200,
+        'PokéAPI contiene results': (r) => r.json('results').length === 200,
+    });
+    
 
     // =========================
     // Logs
