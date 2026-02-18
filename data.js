@@ -1,4 +1,4 @@
-{"type":"Metric","data":{"name":"http_reqs","type":"counter","contains":"default","thresholds":[],"submetrics":null},"metric":"http_reqs"}
+const requestsData = `{"type":"Metric","data":{"name":"http_reqs","type":"counter","contains":"default","thresholds":[],"submetrics":null},"metric":"http_reqs"}
 {"metric":"http_reqs","type":"Point","data":{"time":"2026-02-18T22:26:42.830228304Z","value":1,"tags":{"error_code":"1429","expected_response":"false","group":"","method":"GET","name":"https://reqres.in/api/users?page=1","proto":"HTTP/2.0","scenario":"default","status":"429","tls_version":"tls1.3","url":"https://reqres.in/api/users?page=1"}}}
 {"type":"Metric","data":{"name":"http_req_duration","type":"trend","contains":"time","thresholds":[],"submetrics":[{"name":"http_req_duration{expected_response:true}","suffix":"expected_response:true","tags":{"expected_response":"true"}}]},"metric":"http_req_duration"}
 {"metric":"http_req_duration","type":"Point","data":{"time":"2026-02-18T22:26:42.830228304Z","value":308.677868,"tags":{"error_code":"1429","expected_response":"false","group":"","method":"GET","name":"https://reqres.in/api/users?page=1","proto":"HTTP/2.0","scenario":"default","status":"429","tls_version":"tls1.3","url":"https://reqres.in/api/users?page=1"}}}
@@ -4151,4 +4151,4 @@
 {"metric":"data_sent","type":"Point","data":{"time":"2026-02-18T22:26:52.96348132Z","value":516,"tags":{"group":"","scenario":"default"}}}
 {"metric":"data_received","type":"Point","data":{"time":"2026-02-18T22:26:52.96348132Z","value":18207,"tags":{"group":"","scenario":"default"}}}
 {"metric":"iteration_duration","type":"Point","data":{"time":"2026-02-18T22:26:52.96348132Z","value":658.780211,"tags":{"group":"","scenario":"default"}}}
-{"metric":"iterations","type":"Point","data":{"time":"2026-02-18T22:26:52.96348132Z","value":1,"tags":{"group":"","scenario":"default"}}}
+{"metric":"iterations","type":"Point","data":{"time":"2026-02-18T22:26:52.96348132Z","value":1,"tags":{"group":"","scenario":"default"}}}`;
