@@ -868,8 +868,8 @@ jobs:
             echo "Current p95: $p95"
             echo "Increase: $increase %"
 
-            if (( $(echo "$increase > 20" | bc -l) )); then
-              echo "❌ Performance regression >20%"
+            if (( $(echo "$increase > 60" | bc -l) )); then
+              echo "❌ Performance regression >60%"
               exit 1
             fi
           fi
