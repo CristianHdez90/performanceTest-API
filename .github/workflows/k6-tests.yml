@@ -50,12 +50,14 @@ jobs:
     steps:
       - name: 🧮 Generate HTML report from K6 JSON
         run: |
-            mkdir -p ${{ env.REPORT_DIR }}
-            echo "<!DOCTYPE html><html><head><title>K6 Report</title></head><body>" > ${{ env.REPORT_DIR }}/report.json
-            echo "<h1>K6 Performance Report</h1>" >> ${{ env.REPORT_DIR }}/report.json
-            echo "<pre>" >> ${{ env.REPORT_DIR }}/report.json
-            cat ${{ env.REPORT_DIR }}/report.json >> ${{ env.REPORT_DIR }}/report.json
-            echo "</pre></body></html>" >> ${{ env.REPORT_DIR }}/report.json
+            mkdir -p $REPORT_DIR
+            TMP_JSON=$REPORT_DIR/report_temp.json
+            cp $REPORT_DIR/report.json $TMP_JSON
+            echo "<!DOCTYPE html><html><head><title>K6 Report</title></head><body>" > $REPORT_DIR/index.html
+            echo "<h1>K6 Performance Report</h1>" >> $REPORT_DIR/index.html
+            echo "<pre>" >> $REPORT_DIR/index.html
+            cat $TMP_JSON >> $REPORT_DIR/index.html
+            echo "</pre></body></html>" >> $REPORT_DIR/index.html
 
       - name: 📤 Upload K6 report artifact
         uses: actions/upload-artifact@v4
