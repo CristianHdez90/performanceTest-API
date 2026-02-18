@@ -772,7 +772,7 @@
 
 
 
-name: K6 Performance Tests
+name: K6 Performance Tests API
 
 on:
   push:
