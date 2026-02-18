@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write          
 
+env:
+  REPORT_DIR: "./target/site/reportsK6"  
+
 jobs:
   run_k6:
     name: "Run K6 tests"
