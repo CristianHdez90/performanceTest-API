@@ -345,6 +345,216 @@
 # -----------...------------------------------------------------Version 2 - Interactive HTML Report with Charts----------------------------------------------------------
 
 
+  # ----------------------------------------------------------Version 3 - PRO Dashboard with Metrics Cards and Charts----------------------------------------------------------
+
+# name: K6 Performance Tests & Deploy
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# permissions:
+#   contents: write
+
+# env:
+#   BASE_URL_API: https://reqres.in/api
+#   API_KEY: reqres_ce4bae3ca38545618d0e2bf0834e717c
+#   REPORT_DIR: ./target/site/reportsK6
+
+# jobs:
+#   run_k6:
+#     name: "Run K6 tests"
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: 📥 Checkout repo
+#         uses: actions/checkout@v3
+
+#       - name: 📦 Install K6
+#         run: |
+#           sudo apt update
+#           sudo apt install -y gnupg software-properties-common curl
+#           curl -s https://dl.k6.io/key.gpg | sudo apt-key add -
+#           echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+#           sudo apt update
+#           sudo apt install -y k6
+
+#       - name: 📝 Run K6 tests
+#         run: |
+#           mkdir -p ${{ env.REPORT_DIR }}
+#           k6 run ./tests/users-test.js --out json=${{ env.REPORT_DIR }}/report.json
+
+#       - name: 📤 Upload K6 report artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: k6-report
+#           path: ${{ env.REPORT_DIR }}
+
+#   generate_report:
+#     name: "📊 Generate HTML Report from K6 JSON"
+#     runs-on: ubuntu-latest
+#     needs: run_k6
+#     steps:
+#       - name: 📥 Download K6 report artifact
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: k6-report
+#           path: ${{ env.REPORT_DIR }}
+
+#       - name: 🧮 Generate PRO HTML Dashboard
+#         run: |
+#           mkdir -p ${{ env.REPORT_DIR }}
+#           REPORT_JSON="${{ env.REPORT_DIR }}/report.json"
+#           REPORT_HTML="${{ env.REPORT_DIR }}/index.html"
+
+#           cat > "$REPORT_HTML" <<EOF
+#           <!DOCTYPE html>
+#           <html lang="en">
+#           <head>
+#           <meta charset="UTF-8">
+#           <title>K6 Performance PRO Dashboard</title>
+#           <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+#           <style>
+#           body { font-family: Arial; background:#f4f6f8; margin:0; padding:20px; }
+#           h1 { text-align:center; }
+#           .cards { display:flex; flex-wrap:wrap; gap:15px; margin-bottom:30px; }
+#           .card {
+#             background:white;
+#             padding:15px;
+#             border-radius:10px;
+#             box-shadow:0 2px 8px rgba(0,0,0,0.1);
+#             flex:1;
+#             min-width:180px;
+#           }
+#           .card h3 { margin:0; font-size:14px; color:#666; }
+#           .card p { font-size:20px; font-weight:bold; margin:5px 0 0 0; }
+#           canvas {
+#             background:white;
+#             padding:15px;
+#             border-radius:10px;
+#             box-shadow:0 2px 8px rgba(0,0,0,0.1);
+#           }
+#           </style>
+#           </head>
+#           <body>
+
+#           <h1>K6 Performance PRO Dashboard</h1>
+
+#           <div class="cards">
+#             <div class="card"><h3>Total Requests</h3><p id="total">0</p></div>
+#             <div class="card"><h3>Failed</h3><p id="failed">0</p></div>
+#             <div class="card"><h3>Average (ms)</h3><p id="avg">0</p></div>
+#             <div class="card"><h3>Min (ms)</h3><p id="min">0</p></div>
+#             <div class="card"><h3>Max (ms)</h3><p id="max">0</p></div>
+#             <div class="card"><h3>P90 (ms)</h3><p id="p90">0</p></div>
+#             <div class="card"><h3>P95 (ms)</h3><p id="p95">0</p></div>
+#             <div class="card"><h3>P99 (ms)</h3><p id="p99">0</p></div>
+#           </div>
+
+#           <canvas id="durationChart" height="100"></canvas>
+
+#           <script>
+
+#           const rawData = \`
+#           $(cat "$REPORT_JSON")
+#           \`;
+
+#           let lines = rawData.split('\\n').filter(l => l.trim() !== '');
+#           let durations = [];
+#           let failed = 0;
+
+#           lines.forEach(l => {
+#             try {
+#               const obj = JSON.parse(l);
+
+#               if(obj.type === 'Point' && obj.metric === 'http_req_duration'){
+#                 durations.push(obj.data.value);
+#               }
+
+#               if(obj.type === 'Point' && obj.metric === 'http_reqs' && obj.data.tags.expected_response === 'false'){
+#                 failed++;
+#               }
+
+#             } catch(e){}
+#           });
+
+#           // --- Cálculo métricas ---
+#           durations.sort((a,b)=>a-b);
+
+#           function percentile(arr, p){
+#             if(arr.length === 0) return 0;
+#             const index = Math.ceil((p/100) * arr.length) - 1;
+#             return arr[index].toFixed(2);
+#           }
+
+#           let total = durations.length;
+#           let sum = durations.reduce((a,b)=>a+b,0);
+#           let avg = total > 0 ? (sum/total).toFixed(2) : 0;
+#           let min = total > 0 ? durations[0].toFixed(2) : 0;
+#           let max = total > 0 ? durations[durations.length-1].toFixed(2) : 0;
+
+#           // --- Inject values ---
+#           document.getElementById('total').textContent = total;
+#           document.getElementById('failed').textContent = failed;
+#           document.getElementById('avg').textContent = avg;
+#           document.getElementById('min').textContent = min;
+#           document.getElementById('max').textContent = max;
+#           document.getElementById('p90').textContent = percentile(durations, 90);
+#           document.getElementById('p95').textContent = percentile(durations, 95);
+#           document.getElementById('p99').textContent = percentile(durations, 99);
+
+#           // --- Chart ---
+#           let ctx = document.getElementById('durationChart').getContext('2d');
+#           new Chart(ctx, {
+#             type: 'line',
+#             data: {
+#               labels: durations.map((_,i)=>i+1),
+#               datasets: [{
+#                 label: 'Request Duration (ms)',
+#                 data: durations,
+#                 fill:true,
+#                 tension:0.3
+#               }]
+#             },
+#             options: {
+#               responsive:true,
+#               plugins:{
+#                 legend:{ display:true }
+#               },
+#               scales:{ y:{ beginAtZero:true } }
+#             }
+#           });
+
+#           </script>
+#           </body>
+#           </html>
+#           EOF
+
+#       - name: 📤 Upload HTML report artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: k6-html-report
+#           path: ${{ env.REPORT_DIR }}
+
+#   deploy_report:
+#     name: "🚀 Deploy K6 Report to GitHub Pages"
+#     runs-on: ubuntu-latest
+#     needs: generate_report
+#     steps:
+#       - name: 📥 Download HTML report artifact
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: k6-html-report
+#           path: ${{ env.REPORT_DIR }}
+
+#       - name: 🌐 Deploy to GitHub Pages
+#         uses: peaceiris/actions-gh-pages@v3
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           publish_dir: ${{ env.REPORT_DIR }}  
+# -----------...------------------------------------------------Version 3 - PRO Dashboard with Metrics Cards and Charts----------------------------------------------------------
+
+
 name: K6 Performance Tests & Deploy
 
 on:
@@ -359,19 +569,23 @@ env:
   BASE_URL_API: https://reqres.in/api
   API_KEY: reqres_ce4bae3ca38545618d0e2bf0834e717c
   REPORT_DIR: ./target/site/reportsK6
+  P95_THRESHOLD: 500
+  ENVIRONMENT: staging
 
 jobs:
+
   run_k6:
-    name: "Run K6 tests"
+    name: "🧪 Run K6 tests"
     runs-on: ubuntu-latest
+
     steps:
       - name: 📥 Checkout repo
         uses: actions/checkout@v3
 
-      - name: 📦 Install K6
+      - name: 📦 Install K6 + jq + bc
         run: |
           sudo apt update
-          sudo apt install -y gnupg software-properties-common curl
+          sudo apt install -y gnupg software-properties-common curl jq bc
           curl -s https://dl.k6.io/key.gpg | sudo apt-key add -
           echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
           sudo apt update
@@ -389,9 +603,10 @@ jobs:
           path: ${{ env.REPORT_DIR }}
 
   generate_report:
-    name: "📊 Generate HTML Report from K6 JSON"
+    name: "📊 Generate Observability Dashboard"
     runs-on: ubuntu-latest
     needs: run_k6
+
     steps:
       - name: 📥 Download K6 report artifact
         uses: actions/download-artifact@v4
@@ -399,135 +614,139 @@ jobs:
           name: k6-report
           path: ${{ env.REPORT_DIR }}
 
+      - name: 📊 Append metrics history + detect regression
+        run: |
+          REPORT_JSON="${{ env.REPORT_DIR }}/report.json"
+          HISTORY_FILE="${{ env.REPORT_DIR }}/history.json"
+
+          durations=$(jq -r 'select(.metric=="http_req_duration" and .type=="Point") | .data.value' "$REPORT_JSON")
+          p95=$(echo "$durations" | sort -n | awk '{a[NR]=$1} END{print a[int(NR*0.95)]}')
+
+          timestamp=$(date +%s)
+          branch="${GITHUB_REF##*/}"
+          environment="${{ env.ENVIRONMENT }}"
+
+          if [ -f "$HISTORY_FILE" ]; then
+            jq ". + [{\"timestamp\":$timestamp,\"p95\":$p95,\"branch\":\"$branch\",\"env\":\"$environment\"}]" \
+              "$HISTORY_FILE" > tmp.json && mv tmp.json "$HISTORY_FILE"
+          else
+            echo "[{\"timestamp\":$timestamp,\"p95\":$p95,\"branch\":\"$branch\",\"env\":\"$environment\"}]" > "$HISTORY_FILE"
+          fi
+
+          previous=$(jq '.[-2].p95' "$HISTORY_FILE" 2>/dev/null || echo 0)
+
+          if [ "$previous" != "null" ] && [ "$previous" != "0" ]; then
+            increase=$(awk "BEGIN {print (($p95 - $previous)/$previous)*100}")
+            if (( $(echo "$increase > 20" | bc -l) )); then
+              echo "❌ Performance regression >20%"
+              exit 1
+            fi
+          fi
+
       - name: 🧮 Generate PRO HTML Dashboard
         run: |
-          mkdir -p ${{ env.REPORT_DIR }}
+        
           REPORT_JSON="${{ env.REPORT_DIR }}/report.json"
           REPORT_HTML="${{ env.REPORT_DIR }}/index.html"
 
           cat > "$REPORT_HTML" <<EOF
           <!DOCTYPE html>
-          <html lang="en">
+          <html>
           <head>
           <meta charset="UTF-8">
-          <title>K6 Performance PRO Dashboard</title>
+          <title>K6 Performance Observability</title>
           <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
           <style>
-          body { font-family: Arial; background:#f4f6f8; margin:0; padding:20px; }
-          h1 { text-align:center; }
-          .cards { display:flex; flex-wrap:wrap; gap:15px; margin-bottom:30px; }
-          .card {
-            background:white;
-            padding:15px;
-            border-radius:10px;
-            box-shadow:0 2px 8px rgba(0,0,0,0.1);
-            flex:1;
-            min-width:180px;
-          }
-          .card h3 { margin:0; font-size:14px; color:#666; }
-          .card p { font-size:20px; font-weight:bold; margin:5px 0 0 0; }
-          canvas {
-            background:white;
-            padding:15px;
-            border-radius:10px;
-            box-shadow:0 2px 8px rgba(0,0,0,0.1);
-          }
+          body{font-family:Arial;background:#f4f6f8;padding:20px;}
+          .cards{display:flex;flex-wrap:wrap;gap:15px;margin-bottom:20px;}
+          .card{background:white;padding:15px;border-radius:8px;flex:1;min-width:180px;box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+          .pass{color:green;font-weight:bold;}
+          .fail{color:red;font-weight:bold;}
+          canvas{background:white;padding:10px;border-radius:8px;margin-top:20px;}
           </style>
           </head>
           <body>
 
-          <h1>K6 Performance PRO Dashboard</h1>
+          <h1>K6 Performance Observability Dashboard</h1>
 
           <div class="cards">
-            <div class="card"><h3>Total Requests</h3><p id="total">0</p></div>
-            <div class="card"><h3>Failed</h3><p id="failed">0</p></div>
-            <div class="card"><h3>Average (ms)</h3><p id="avg">0</p></div>
-            <div class="card"><h3>Min (ms)</h3><p id="min">0</p></div>
-            <div class="card"><h3>Max (ms)</h3><p id="max">0</p></div>
-            <div class="card"><h3>P90 (ms)</h3><p id="p90">0</p></div>
-            <div class="card"><h3>P95 (ms)</h3><p id="p95">0</p></div>
-            <div class="card"><h3>P99 (ms)</h3><p id="p99">0</p></div>
+          <div class="card"><h3>Total</h3><p id="total"></p></div>
+          <div class="card"><h3>Avg</h3><p id="avg"></p></div>
+          <div class="card"><h3>P95</h3><p id="p95"></p></div>
+          <div class="card"><h3>Status</h3><p id="status"></p></div>
           </div>
 
-          <canvas id="durationChart" height="100"></canvas>
+          <canvas id="histogram"></canvas>
+          <canvas id="trend"></canvas>
 
           <script>
 
-          const rawData = \`
-          $(cat "$REPORT_JSON")
-          \`;
+          const THRESHOLD=${{ env.P95_THRESHOLD }};
+          const rawData=\`$(cat "$REPORT_JSON")\`;
 
-          let lines = rawData.split('\\n').filter(l => l.trim() !== '');
-          let durations = [];
-          let failed = 0;
-
-          lines.forEach(l => {
-            try {
-              const obj = JSON.parse(l);
-
-              if(obj.type === 'Point' && obj.metric === 'http_req_duration'){
-                durations.push(obj.data.value);
-              }
-
-              if(obj.type === 'Point' && obj.metric === 'http_reqs' && obj.data.tags.expected_response === 'false'){
-                failed++;
-              }
-
-            } catch(e){}
+          let durations=[];
+          rawData.split('\\n').forEach(l=>{
+          try{
+            const o=JSON.parse(l);
+            if(o.metric==="http_req_duration" && o.type==="Point")
+              durations.push(o.data.value);
+          }catch(e){}
           });
-
-          // --- Cálculo métricas ---
+          
           durations.sort((a,b)=>a-b);
+          let total=durations.length;
+          let avg=(durations.reduce((a,b)=>a+b,0)/total).toFixed(2);
+          let p95=durations[Math.floor(total*0.95)].toFixed(2);
 
-          function percentile(arr, p){
-            if(arr.length === 0) return 0;
-            const index = Math.ceil((p/100) * arr.length) - 1;
-            return arr[index].toFixed(2);
+          document.getElementById("total").textContent=total;
+          document.getElementById("avg").textContent=avg+" ms";
+          document.getElementById("p95").textContent=p95+" ms";
+
+          let statusEl=document.getElementById("status");
+          if(p95>THRESHOLD){
+            statusEl.textContent="FAIL";
+            statusEl.className="fail";
+          }else{
+            statusEl.textContent="PASS";
+            statusEl.className="pass";
           }
 
-          let total = durations.length;
-          let sum = durations.reduce((a,b)=>a+b,0);
-          let avg = total > 0 ? (sum/total).toFixed(2) : 0;
-          let min = total > 0 ? durations[0].toFixed(2) : 0;
-          let max = total > 0 ? durations[durations.length-1].toFixed(2) : 0;
+          function histogram(data,bucket=50){
+          let max=Math.max(...data);
+          let buckets=Math.ceil(max/bucket);
+          let arr=new Array(buckets).fill(0);
+          data.forEach(v=>arr[Math.floor(v/bucket)]++);
+          return {labels:arr.map((_,i)=>i*bucket+"-"+(i+1)*bucket+"ms"),values:arr};
+          }
 
-          // --- Inject values ---
-          document.getElementById('total').textContent = total;
-          document.getElementById('failed').textContent = failed;
-          document.getElementById('avg').textContent = avg;
-          document.getElementById('min').textContent = min;
-          document.getElementById('max').textContent = max;
-          document.getElementById('p90').textContent = percentile(durations, 90);
-          document.getElementById('p95').textContent = percentile(durations, 95);
-          document.getElementById('p99').textContent = percentile(durations, 99);
+          let hist=histogram(durations);
 
-          // --- Chart ---
-          let ctx = document.getElementById('durationChart').getContext('2d');
-          new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: durations.map((_,i)=>i+1),
-              datasets: [{
-                label: 'Request Duration (ms)',
-                data: durations,
-                fill:true,
-                tension:0.3
-              }]
-            },
-            options: {
-              responsive:true,
-              plugins:{
-                legend:{ display:true }
-              },
-              scales:{ y:{ beginAtZero:true } }
-            }
+          new Chart(document.getElementById("histogram"),{
+          type:"bar",
+          data:{labels:hist.labels,datasets:[{label:"Distribution",data:hist.values}]}
           });
+
+          fetch("history.json")
+          .then(r=>r.json())
+          .then(history=>{
+            new Chart(document.getElementById("trend"),{
+              type:"line",
+              data:{
+                labels:history.map(h=>new Date(h.timestamp*1000).toLocaleString()),
+                datasets:[{
+                  label:"P95 Trend",
+                  data:history.map(h=>h.p95),
+                  fill:false
+                }]
+              }
+            });
+          }).catch(()=>{});
 
           </script>
           </body>
           </html>
           EOF
-          
+
       - name: 📤 Upload HTML report artifact
         uses: actions/upload-artifact@v4
         with:
@@ -549,4 +768,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ${{ env.REPORT_DIR }}  
+          publish_dir: ${{ env.REPORT_DIR }}
+  
