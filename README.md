@@ -32,3 +32,48 @@ node scripts/save-history.js
 
 # Abrir dashboard
 open ./target/site/reportsK6/index.html
+
+🚀 GitHub Actions Workflow
+
+El workflow realiza:
+
+Ejecutar pruebas K6 y generar JSON con resultados.
+
+Actualizar historial de métricas con save-history.js.
+
+Publicar dashboard actualizado en GitHub Pages desde REPORT_DIR.
+
+Archivo: .github/workflows/k6-perf.yml
+
+📂 Estructura del proyecto
+.
+├── tests/                  # Scripts de pruebas K6
+├── scripts/                # Scripts de Node (save-history.js)
+├── target/site/reportsK6/  # Reportes y dashboards generados
+│   ├── report.json
+│   └── index.html
+├── index.html              # Dashboard principal (raíz o movido a REPORT_DIR)
+├── package.json
+└── .github/workflows/      # GitHub Actions workflow
+
+📊 Dashboard
+
+El dashboard index.html incluye:
+
+Número total de requests.
+
+Promedio de latencia.
+
+P95 y estado (PASS/FAIL).
+
+Histograma de distribución de latencias.
+
+Gráfico de tendencias histórico.
+
+📌 Notas
+
+Ajusta la variable de entorno P95_THRESHOLD en el workflow para definir el SLA.
+
+GitHub Pages se publica automáticamente desde la carpeta REPORT_DIR con peaceiris/actions-gh-pages.
+
+Asegúrate de que index.html esté presente en REPORT_DIR antes de hacer deploy para evitar errores 404.
