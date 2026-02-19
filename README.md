@@ -40,22 +40,22 @@ node scripts/save-history.js
 
 # Abrir dashboard
 open index.html
-🚀 GitHub Actions Workflow
-Archivo: .github/workflows/performance.yml
+
+## 🚀 GitHub Actions Workflow
+
+**Archivo:** `.github/workflows/performance.yml`
 
 El workflow realiza:
 
-Ejecutar pruebas K6 y generar report.json.
+1. Ejecutar pruebas K6 y generar `report.json`.  
+2. Actualizar historial de métricas con `save-history.js` (guardado en `performance-history/`).  
+3. Publicar dashboard actualizado en GitHub Pages desde la raíz del repositorio.
 
-Actualizar historial de métricas con save-history.js (guardado en performance-history/).
+**Enlaces de interés:**
 
-Publicar dashboard actualizado en GitHub Pages desde la raíz del repositorio.
+- **Dashboard en GitHub Pages:** [https://cristianhdez90.github.io/performanceTest-API/](https://cristianhdez90.github.io/performanceTest-API/)  
+- **Historial de ejecuciones GitHub Actions:** [https://github.com/CristianHdez90/performanceTest-API/actions](https://github.com/CristianHdez90/performanceTest-API/actions)
 
-Enlaces de interés:
-
-Dashboard en GitHub Pages: https://cristianhdez90.github.io/performanceTest-API/
-
-Historial de ejecuciones GitHub Actions: https://github.com/CristianHdez90/performanceTest-API/actions
 
 📂 Estructura del proyecto
 .
@@ -67,22 +67,21 @@ Historial de ejecuciones GitHub Actions: https://github.com/CristianHdez90/perfo
 ├── summary.json              # Resumen de métricas
 ├── package.json
 └── .github/workflows/        # GitHub Actions workflow
-📊 Dashboard
-El dashboard index.html incluye:
 
-Número total de requests.
+## 📊 Dashboard
 
-Promedio de latencia.
+El dashboard `index.html` incluye:
 
-P95 y estado (PASS/FAIL).
+- Número total de requests.  
+- Promedio de latencia.  
+- P95 y estado (PASS/FAIL).  
+- Histograma de distribución de latencias.  
+- Gráfico de tendencias histórico (usa los datos de `performance-history/`).
 
-Histograma de distribución de latencias.
+---
 
-Gráfico de tendencias histórico (usa los datos de performance-history/).
+## 📌 Notas
 
-📌 Notas
-Ajusta la variable de entorno P95_THRESHOLD en el workflow para definir el SLA.
-
-GitHub Pages se publica automáticamente desde la raíz del repo con peaceiris/actions-gh-pages.
-
-Asegúrate de que index.html, report.json, summary.json y performance-history/ estén presentes antes de hacer deploy para evitar errores 404.
+- Ajusta la variable de entorno `P95_THRESHOLD` en el workflow para definir el SLA.  
+- GitHub Pages se publica automáticamente desde la **raíz del repo** con `peaceiris/actions-gh-pages`.  
+- Asegúrate de que `index.html`, `report.json`, `summary.json` y `performance-history/` estén presentes antes de hacer deploy para evitar errores 404.
