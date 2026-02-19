@@ -41,6 +41,8 @@ node scripts/save-history.js
 # Abrir dashboard
 open index.html
 
+```
+
 ## 🚀 GitHub Actions Workflow
 
 **Archivo:** `.github/workflows/performance.yml`
