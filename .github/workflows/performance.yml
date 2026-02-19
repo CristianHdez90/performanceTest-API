@@ -17,23 +17,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout
+      # 1️ Checkout
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Setup Node
+      # 2️ Setup Node
       - name: 🟢 Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20      
 
-      # 3️⃣ Install dependencies
-      - name: 📦 Install dependencies
-        run: npm ci
-
-      # 4️⃣ Install k6
+      # 3 Install k6
       - name: ⚡ Install k6
         run: |
           sudo apt update
@@ -43,14 +39,14 @@ jobs:
           sudo apt update
           sudo apt install -y k6
 
-      # 5️⃣ Run k6
+      # 4 Run k6
       - name: 🧪 Run k6 test
         run: |
           k6 run tests/users-test.js \
             --out json=report.json \
             --summary-export=summary.json
 
-      # 6️⃣ SLA Validation
+      # 5 SLA Validation
       - name: 🚦 Validate SLA (p95)
         run: |
           p95=$(jq '.metrics.http_req_duration["p(95)"]' summary.json)
@@ -64,11 +60,11 @@ jobs:
             echo "✅ SLA respected"
           fi
 
-      # 7️⃣ Update history
+      # 6️ Update history
       - name: 📊 Update performance history
         run: node scripts/save-history.js
 
-      # 8️⃣ Commit changes
+      # 7️ Commit changes
       - name: 💾 Commit history + reports
         run: |
           git config --global user.name "github-actions"
@@ -79,7 +75,7 @@ jobs:
           git commit -m "📊 Update performance history [CI]" || echo "No changes"
           git push
 
-      # 9️⃣ Deploy to GitHub Pages
+      # 8️ Deploy to GitHub Pages
       - name: 🌍 Deploy dashboard to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
