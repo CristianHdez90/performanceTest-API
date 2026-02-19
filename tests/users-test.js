@@ -81,6 +81,21 @@ export default function () {
     // console.log('POST Response:', postRes.body);
     // console.log('PUT Response:', putRes.body);
     // console.log('DELETE Response Status:', deleteRes.status);
+
+    
 }
+
+export function handleSummary(data) {
+  return {
+    'summary.json': JSON.stringify(data, null, 2),
+  };
+}
+
+// export function handleSummary(data) {
+//   return {
+//     'summary.html': htmlReport(data),
+//   };
+// }
+
 
 

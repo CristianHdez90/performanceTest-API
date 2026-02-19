@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>K6 Enterprise Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background:#0f172a;
+  color:#fff;
+  margin:0;
+  padding:20px;
+}
+
+h1 { margin-bottom:10px; }
+
+.kpi-container {
+  display:flex;
+  gap:20px;
+  flex-wrap:wrap;
+  margin-bottom:30px;
+}
+
+.kpi {
+  flex:1;
+  min-width:200px;
+  background:#1e293b;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 4px 12px rgba(0,0,0,.4);
+}
+
+.kpi h3 { margin:0 0 10px 0; font-size:14px; color:#94a3b8; }
+.kpi .value { font-size:26px; font-weight:bold; }
+
+.green { color:#22c55e; }
+.red { color:#ef4444; }
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  margin-top:20px;
+  background:#1e293b;
+  border-radius:8px;
+  overflow:hidden;
+}
+
+th, td {
+  padding:10px;
+  text-align:left;
+}
+
+th {
+  background:#334155;
+}
+
+tr:nth-child(even){
+  background:#162032;
+}
+
+select {
+  padding:6px;
+  margin-right:10px;
+}
+
+button {
+  padding:8px 12px;
+  background:#2563eb;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.section {
+  margin-top:40px;
+}
+</style>
+</head>
+<body>
+
+<h1>📊 K6 Performance Dashboard</h1>
+
+<div class="kpi-container">
+  <div class="kpi">
+    <h3>Total Requests</h3>
+    <div class="value" id="totalReq">-</div>
+  </div>
+  <div class="kpi">
+    <h3>Failed Requests</h3>
+    <div class="value" id="failedReq">-</div>
+  </div>
+  <div class="kpi">
+    <h3>Average Duration (ms)</h3>
+    <div class="value" id="avgDuration">-</div>
+  </div>
+  <div class="kpi">
+    <h3>Checks Success %</h3>
+    <div class="value" id="checksSuccess">-</div>
+  </div>
+</div>
+
+<div class="section">
+<h2>📈 Duration Chart</h2>
+<canvas id="durationChart"></canvas>
+</div>
+
+<div class="section">
+<h2>📊 Historical Trend</h2>
+<canvas id="historyChart"></canvas>
+</div>
+
+
+<div class="section">
+<h2>🔍 Request Details</h2>
+
+<select id="methodFilter"></select>
+<select id="nameFilter"></select>
+<button onclick="exportCSV()">📁 Export CSV</button>
+
+<table>
+<thead>
+<tr>
+<th>Time</th>
+<th>Method</th>
+<th>URL</th>
+<th>Status</th>
+<th>Duration (ms)</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
+
+<div class="section">
+<h2>🧪 Checks Detailed</h2>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Pass</th>
+<th>Fail</th>
+<th>Success %</th>
+</tr>
+</thead>
+<tbody id="checksBody"></tbody>
+</table>
+</div>
+
+<script>
+
+let allRows = [];
+
+async function loadSummary() {
+  const res = await fetch('summary.json');
+  const data = await res.json();
+  const metrics = data.metrics || {};
+
+  const totalReq = metrics.http_reqs?.values?.count || 0;
+  const failRate = metrics.http_req_failed?.values?.rate || 0;
+  const avg = metrics.http_req_duration?.values?.avg || 0;
+  const checks = metrics.checks?.values || {};
+  const successRate = (checks.rate || 0) * 100;
+
+  document.getElementById("totalReq").textContent = totalReq;
+  document.getElementById("failedReq").textContent = Math.round(failRate * totalReq);
+  document.getElementById("avgDuration").textContent = avg.toFixed(2);
+  document.getElementById("checksSuccess").textContent = successRate.toFixed(2) + "%";
+
+  if(failRate > 0.05){
+    document.getElementById("failedReq").classList.add("red");
+  } else {
+    document.getElementById("failedReq").classList.add("green");
+  }
+
+  renderChecks(data);
+  renderChart(metrics.http_req_duration?.values);
+}
+
+function renderChart(duration){
+  const ctx = document.getElementById('durationChart');
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:['Avg','Min','Max','P90','P95'],
+      datasets:[{
+        label:'Duration (ms)',
+        data:[
+          duration.avg,
+          duration.min,
+          duration.max,
+          duration["p(90)"],
+          duration["p(95)"]
+        ]
+      }]
+    }
+  });
+}
+
+function renderChecks(data){
+  const checks = data.root_group?.checks || [];
+  const body = document.getElementById("checksBody");
+  body.innerHTML="";
+
+  checks.forEach(c=>{
+    const total = c.passes + c.fails;
+    const rate = total===0?0:(c.passes/total)*100;
+
+    const row = document.createElement("tr");
+    row.innerHTML=`
+      <td>${c.name}</td>
+      <td>${c.passes}</td>
+      <td>${c.fails}</td>
+      <td>${rate.toFixed(2)}%</td>
+    `;
+
+    if(rate<80) row.style.background="#3f1d1d";
+
+    body.appendChild(row);
+  });
+}
+
+async function loadReport(){
+  const res = await fetch('report.json');
+  const lines = (await res.text()).split("\n");
+
+  const methodSet = new Set();
+  const nameSet = new Set();
+
+  lines.forEach(line=>{
+    if(!line) return;
+    const obj = JSON.parse(line);
+    if(obj.type==="Point" && obj.metric==="http_req_duration"){
+      const tags = obj.data.tags;
+      const row={
+        time: obj.data.time,
+        method: tags.method,
+        name: tags.url,
+        status: tags.status,
+        duration: obj.data.value
+      };
+      allRows.push(row);
+      methodSet.add(tags.method);
+      nameSet.add(tags.url);
+    }
+  });
+
+  populateFilters(methodSet,nameSet);
+  renderTable(allRows);
+}
+
+function populateFilters(methods,names){
+  const methodFilter = document.getElementById("methodFilter");
+  const nameFilter = document.getElementById("nameFilter");
+
+  methodFilter.innerHTML="<option value=''>All Methods</option>";
+  nameFilter.innerHTML="<option value=''>All URLs</option>";
+
+  methods.forEach(m=>{
+    methodFilter.innerHTML+=`<option value="${m}">${m}</option>`;
+  });
+
+  names.forEach(n=>{
+    nameFilter.innerHTML+=`<option value="${n}">${n}</option>`;
+  });
+
+  methodFilter.onchange = filterTable;
+  nameFilter.onchange = filterTable;
+}
+
+function filterTable(){
+  const m = document.getElementById("methodFilter").value;
+  const n = document.getElementById("nameFilter").value;
+
+  const filtered = allRows.filter(r=>
+    (m===""||r.method===m) &&
+    (n===""||r.name===n)
+  );
+
+  renderTable(filtered);
+}
+
+function renderTable(rows){
+  const body = document.getElementById("tableBody");
+  body.innerHTML="";
+  rows.forEach(r=>{
+    body.innerHTML+=`
+      <tr>
+        <td>${r.time}</td>
+        <td>${r.method}</td>
+        <td>${r.name}</td>
+        <td>${r.status}</td>
+        <td>${r.duration.toFixed(2)}</td>
+      </tr>
+    `;
+  });
+}
+
+function exportCSV(){
+  let csv="Time,Method,URL,Status,Duration\n";
+  allRows.forEach(r=>{
+    csv+=`${r.time},${r.method},${r.name},${r.status},${r.duration}\n`;
+  });
+  const blob=new Blob([csv]);
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="k6-report.csv";
+  a.click();
+}
+async function loadHistory() {
+  const res = await fetch('../performance-history/history.json');
+  const history = await res.json();
+
+  if (!history || history.length === 0) return;
+
+  const labels = history.map(h => h.date.substring(0,10));
+  const avgData = history.map(h => h.avgDuration);
+  const failData = history.map(h => h.failRate * 100);
+
+  new Chart(document.getElementById('historyChart'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Avg Duration (ms)',
+          data: avgData,
+          borderColor: '#3b82f6',
+          tension: 0.3
+        },
+        {
+          label: 'Fail Rate (%)',
+          data: failData,
+          borderColor: '#ef4444',
+          tension: 0.3
+        }
+      ]
+    }
+  });
+}
+
+
+loadSummary();
+loadReport();
+loadHistory();
+
+</script>
+</body>
+</html>
