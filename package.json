@@ -1,0 +1,25 @@
+{
+  "name": "k6-performance-siigo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "k6 run tests/users-test.js",
+    "test:html": "k6 run tests/users-test.js --out json=report.json"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+   "devDependencies": {    
+    "@types/dotenv": "^8.2.3",
+    "@types/node": "^20.19.23",
+    "@types/papaparse": "^5.3.16",
+    "papaparse": "^5.5.3",    
+    "rimraf": "^6.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "javascript": "^1.0.0"
+    
+  }
+}
