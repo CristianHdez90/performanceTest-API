@@ -58,7 +58,7 @@ El workflow realiza:
 - **Dashboard en GitHub Pages:** [https://cristianhdez90.github.io/performanceTest-API/](https://cristianhdez90.github.io/performanceTest-API/)  
 - **Historial de ejecuciones GitHub Actions:** [https://github.com/CristianHdez90/performanceTest-API/actions](https://github.com/CristianHdez90/performanceTest-API/actions)
 
-
+```bash
 📂 Estructura del proyecto
 .
 ├── tests/                    # Scripts de pruebas K6
@@ -69,6 +69,7 @@ El workflow realiza:
 ├── summary.json              # Resumen de métricas
 ├── package.json
 └── .github/workflows/        # GitHub Actions workflow
+```
 
 ## 📊 Dashboard
 
