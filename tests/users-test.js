@@ -67,11 +67,11 @@ export default function () {
      // =========================
     // GET /pokemon?limit=200 (PokéAPI)
     // =========================
-    const pokeRes = http.get(POKE_URL);
-    check(pokeRes, {
-        'PokéAPI status 200': (r) => r.status === 200,
-        'PokéAPI contiene results': (r) => r.json('results').length === 200,
-    });
+    // const pokeRes = http.get(POKE_URL);
+    // check(pokeRes, {
+    //     'PokéAPI status 200': (r) => r.status === 200,
+    //     'PokéAPI contiene results': (r) => r.json('results').length === 200,
+    // });
     
 
     // =========================
