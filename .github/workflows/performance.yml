@@ -1,4 +1,4 @@
-name: K6 Performance Pipeline
+name: 🚀 K6 Performance Pipeline
 
 on:
   push:
@@ -8,58 +8,82 @@ on:
 permissions:
   contents: write
 
+env:
+  P95_THRESHOLD: 500
+
 jobs:
   performance-test:
+    name: 🧪 Performance Observability
     runs-on: ubuntu-latest
 
     steps:
       # 1️⃣ Checkout
-      - name: Checkout repository
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       # 2️⃣ Setup Node
-      - name: Setup Node
+      - name: 🟢 Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       # 3️⃣ Install dependencies
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: npm ci
 
       # 4️⃣ Install k6
-      - name: Install k6
+      - name: ⚡ Install k6
         run: |
           sudo apt update
-          sudo apt install -y gnupg
+          sudo apt install -y gnupg curl jq bc
           curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
           sudo apt update
-          sudo apt install k6
+          sudo apt install -y k6
 
       # 5️⃣ Run k6
-      - name: Run k6 test
+      - name: 🧪 Run k6 test
         run: |
-          k6 run tests/users-test.js --summary-export=summary.json
+          k6 run tests/users-test.js \
+            --out json=report.json \
+            --summary-export=summary.json
 
-      # 6️⃣ Update history
-      - name: Update performance history
+      # 6️⃣ SLA Validation
+      - name: 🚦 Validate SLA (p95)
+        run: |
+          p95=$(jq '.metrics.http_req_duration["p(95)"]' summary.json)
+
+          echo "Current p95: $p95 ms"
+
+          if (( $(echo "$p95 > $P95_THRESHOLD" | bc -l) )); then
+            echo "❌ SLA exceeded (p95 > $P95_THRESHOLD ms)"
+            exit 1
+          else
+            echo "✅ SLA respected"
+          fi
+
+      # 7️⃣ Update history
+      - name: 📊 Update performance history
         run: node scripts/save-history.js
 
-      # 7️⃣ Commit history
-      - name: Commit history changes
+      # 8️⃣ Commit changes
+      - name: 💾 Commit history + reports
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add performance-history/history.json
-          git commit -m "Update performance history" || echo "No changes"
+
+          git add performance-history/history.json summary.json report.json
+
+          git commit -m "📊 Update performance history [CI]" || echo "No changes"
           git push
 
-      # 8️⃣ Deploy to GitHub Pages
-      - name: Deploy dashboard to GitHub Pages
+      # 9️⃣ Deploy to GitHub Pages
+      - name: 🌍 Deploy dashboard to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: .
+          publish_branch: gh-pages
+          force_orphan: true
