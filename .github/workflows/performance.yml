@@ -84,15 +84,15 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 📥 Download HTML report artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-html-report
-          path: ${{ env.REPORT_DIR }}
+    #   - name: 📥 Download HTML report artifact
+    #     uses: actions/download-artifact@v4
+    #     with:
+    #       name: k6-html-report
+    #       path: ${{ env.REPORT_DIR }}
 
       - name: 🌐 Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ${{ env.REPORT_DIR }}
+          publish_dir: ${{ env.REPORT_DIR }}         
 
